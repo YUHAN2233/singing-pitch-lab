@@ -1,0 +1,27 @@
+# Never commit local audio, user analyses, downloaded models, or environments.
+.data/
+.test-runs/
+.venv/
+models/
+evidence/*
+!evidence/.gitkeep
+dist/
+__pycache__/
+.pytest_cache/
+pytest-cache-files-*/
+*.pyc
+*.log
+*.pid
+*.ncm
+*.wav
+*.flac
+*.mp3
+*.m4a
+*.ogg
+*.onnx
+*.zip
+.env
+.env.*
+*.key
+*.pem
+*.p12

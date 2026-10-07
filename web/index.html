@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>听见 · 唱歌音准实验室</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='17' fill='%23176960'/%3E%3Cpath d='M16 30v8m8-19v28m8-35v40m8-31v22m8-15v12' stroke='%23fff' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="听见 首页"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span><span>听见<span class="brand-sub">SINGING LAB</span></span></a>
+      <div class="privacy-badge"><span class="status-dot"></span>仅在本机处理<span class="hide-small"> · 录音不上传云端</span></div>
+    </header>
+
+    <main>
+      <section class="intro" aria-labelledby="page-title">
+        <div><div class="eyebrow">YOUR VOICE, IN FOCUS</div><h1 id="page-title">看见音高，听见进步<span>。</span></h1><p>分离原唱人声，找到旋律。上传录音，或戴上耳机直接开唱。</p></div>
+        <div class="engine-badge"><span class="status-dot pending" id="engine-dot"></span><div><strong id="engine-title">正在检查本机引擎</strong><span id="engine-detail">干声分析与麦克风检测可独立运行</span></div></div>
+      </section>
+
+      <section class="upload-grid" aria-label="音频文件">
+        <article class="upload-card" id="reference-card">
+          <div class="card-heading"><div class="step-number">01</div><div><h2>原唱参考</h2><p>先提取人声，再建立音高轨迹</p></div><span class="tag">参考轨迹</span></div>
+          <label class="file-drop" for="reference-file"><span class="upload-icon" aria-hidden="true">↑</span><span><strong id="reference-name">选择原唱音频文件</strong><small>WAV · MP3 · FLAC · M4A · NCM 等本机支持格式</small></span><span class="file-button">选择文件</span><input id="reference-file" type="file" accept="audio/*,.wav,.mp3,.flac,.m4a,.ogg,.aif,.aiff,.ncm" aria-label="上传原唱参考音频"></label>
+          <div class="file-options"><label>音频类型<select id="reference-mode" aria-label="原唱音频类型"><option value="mixed">歌曲混音 · 先分离人声</option><option value="dry">纯人声 · 不含伴奏</option></select></label><button class="text-button" id="reference-demo" type="button">试用合成旋律 ↗</button></div>
+          <div class="job-status" role="status" aria-live="polite"><span id="reference-status">还没有参考曲</span><button id="reference-cancel" class="text-button danger" type="button" hidden>取消 / 移除</button></div>
+          <progress id="reference-progress" max="1" value="0" aria-label="参考曲处理进度" hidden></progress>
+          <p id="reference-warning" class="inline-warning" hidden></p>
+          <button class="text-button cache-button" id="reference-restore" type="button">↶ 恢复最近的本机结果</button>
+        </article>
+        <article class="upload-card" id="recording-card">
+          <div class="card-heading"><div class="step-number peach">02</div><div><h2>你的录音</h2><p>与原唱对齐，查看每一处音准偏差</p></div><span class="tag peach">演唱轨迹</span></div>
+          <label class="file-drop" for="recording-file"><span class="upload-icon" aria-hidden="true">↑</span><span><strong id="recording-name">选择你的演唱录音</strong><small>也可以跳过上传，使用下方实时麦克风</small></span><span class="file-button">选择文件</span><input id="recording-file" type="file" accept="audio/*,.wav,.mp3,.flac,.m4a,.ogg,.aif,.aiff,.ncm" aria-label="上传演唱录音"></label>
+          <div class="file-options"><label>音频类型<select id="recording-mode" aria-label="录音音频类型"><option value="mixed">含伴奏录音 · 先分离人声</option><option value="dry">纯人声 · 不含伴奏</option></select></label><button class="text-button" id="recording-demo" type="button">试用偏音录音 ↗</button></div>
+          <div class="job-status" role="status" aria-live="polite"><span id="recording-status">还没有演唱录音</span><button id="recording-cancel" class="text-button danger" type="button" hidden>取消 / 移除</button></div>
+          <progress id="recording-progress" max="1" value="0" aria-label="演唱录音处理进度" hidden></progress>
+          <p id="recording-warning" class="inline-warning" hidden></p>
+          <button class="text-button cache-button" id="recording-restore" type="button">↶ 恢复最近的本机结果</button>
+        </article>
+      </section>
+
+      <section class="reference-library panel" aria-label="本机原唱库">
+        <div class="section-heading"><div><div class="eyebrow">LOCAL LIBRARY</div><h2>本机原唱库</h2></div><span id="reference-library-status" role="status">正在读取本机结果…</span></div>
+        <div id="reference-library-list" class="reference-library-list"></div>
+        <p class="library-hint">已完成的原唱分析会保留在此，可随时切换；只有点击删除并确认才会移除。音频仅保存在本机，曲库占用空间会随歌曲增加。</p>
+      </section>
+
+      <section class="workspace-grid" aria-label="音高分析工作台">
+        <div class="analysis-panel panel">
+          <div class="section-heading"><div><div class="eyebrow">PITCH TIMELINE</div><h2>音高轨迹</h2></div><div class="legend"><span><i class="reference-key"></i>原唱目标</span><span><i class="recording-key"></i>我的声音</span></div></div>
+          <div class="chart-wrap"><canvas id="pitch-chart" role="img" aria-label="音高曲线：横轴为秒，纵轴为音名；等待音频分析"></canvas><i id="timeline-crosshair" class="chart-crosshair" aria-hidden="true" hidden></i><output id="timeline-cursor" class="chart-cursor" role="status" hidden></output><div class="chart-empty" id="chart-empty"><div class="empty-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><strong>旋律，从这里开始</strong><span>选择音频或试用合成旋律，即可看到真实音高曲线</span></div></div>
+          <div class="player-area"><label for="playback-source">试听音轨</label><select id="playback-source" disabled aria-label="试听音轨"><option value="">请先分析音频</option></select><span id="playback-description">分析后可试听原曲、人声与伴奏</span><audio id="audio-player" controls preload="metadata" aria-label="音频播放器"></audio></div>
+          <div class="metrics-heading"><h3 id="score-title">录音比对结果</h3><span id="score-caption">等待两条音高轨迹</span></div>
+          <div class="metrics"><div><span>平均绝对偏差</span><strong id="metric-cents">—<small> 音分</small></strong></div><div><span>±50 音分内</span><strong id="metric-accuracy">—</strong></div><div><span>有效覆盖率</span><strong id="metric-coverage">—</strong></div><div><span>有效比对帧</span><strong id="metric-count">0</strong></div></div>
+          <p class="metric-help">100 音分 = 1 个半音。仅比较双方可信的人声帧；覆盖率过低时，偏差均值不代表整首表现。</p>
+        </div>
+
+        <aside class="live-panel" aria-labelledby="live-title">
+          <div class="live-heading"><div><div class="eyebrow">LIVE PRACTICE</div><h2 id="live-title">现在，唱一句</h2></div><span class="live-badge" id="mic-badge">麦克风未开启</span></div>
+          <div class="live-note" id="live-note" aria-label="当前音名">—<small id="live-frequency">等待你的声音</small></div>
+          <div class="tuning-scale" role="img" aria-label="音分偏差指示器"><span>偏低</span><span>准确</span><span>偏高</span><div class="tuning-track"><i id="tuning-needle"></i></div><div class="scale-labels"><span>−50</span><span>0</span><span>+50</span></div></div>
+          <div class="live-comparison"><span id="live-target">目标音：—</span><strong id="live-delta">— 音分</strong></div>
+          <div class="mic-level"><span>输入音量</span><meter id="mic-level" min="0" max="1" value="0" aria-label="麦克风音量"></meter><span id="mic-confidence">置信度 —</span></div>
+          <button type="button" id="mic-toggle" class="primary-button"><span aria-hidden="true">●</span> 开启麦克风</button>
+          <p class="mic-status" id="mic-status" role="status" aria-live="polite">可独立测音。播放原唱参考音轨时，自动进入实时比对。</p>
+          <div class="headphone-tip"><span aria-hidden="true">◖◗</span><p><strong>请戴上耳机</strong>避免伴奏被麦克风拾取。这里检测实时干声，不进行实时混音分离；不会保存麦克风录音。</p></div>
+        </aside>
+      </section>
+
+      <section class="history-panel panel" aria-labelledby="history-title">
+        <div class="history-heading">
+          <div><div class="eyebrow">YOUR PITCH HISTORY</div><h2 id="history-title">本次演唱历史</h2><p>只记录本页的音高数据；静音与低置信度处留空。</p></div>
+          <div class="history-actions"><button id="history-follow" type="button">暂停回看</button><button id="history-clear" type="button">清空本次记录</button></div>
+        </div>
+        <div class="history-chart-wrap"><canvas id="history-chart" role="img" aria-label="本次演唱音高历史，横轴时间，纵轴音名"></canvas><div id="history-crosshair" class="history-crosshair" hidden></div><output id="history-cursor" class="history-cursor" hidden></output><p id="history-empty">开启麦克风并唱歌后，这里会出现音高曲线。</p></div>
+        <div class="history-controls"><label for="history-position">回看位置</label><input id="history-position" type="range" min="0" max="0" step="0.1" value="0" disabled><span id="history-time">0:00–0:20</span></div>
+        <p id="history-status" class="history-status" role="status">等待本次演唱；停止麦克风后记录仍保留。</p>
+        <div class="history-stats" aria-label="最近30分钟有效音段统计">
+          <div class="history-stat"><span>最高音</span><strong id="history-high">暂无</strong></div>
+          <div class="history-stat"><span>最低音</span><strong id="history-low">暂无</strong></div>
+          <div class="history-stat history-distribution"><span>各音名次数</span><div id="history-counts">暂无</div></div>
+        </div>
+        <p class="history-stat-help">统计最近 30 分钟；连续稳定唱出同一音名算 1 次，需持续至少约 0.24 秒。静音后的重唱算新的一次；无声时保留显示的上次音高不参与统计。</p>
+      </section>
+
+      <section class="alignment-panel panel" aria-labelledby="alignment-title"><div class="alignment-intro"><div class="eyebrow">MAKE IT YOURS</div><h2 id="alignment-title">对齐与调音</h2><p>节拍对上了，比较才有意义。</p></div><div class="alignment-control"><label for="time-offset">时间偏移 <span>ms</span></label><input id="time-offset" type="number" min="-30000" max="30000" step="10" value="0"><p>正值：读取更晚的参考曲位置。离线录音和实时比较共用。</p></div><div class="alignment-control"><label for="input-latency">输入延迟补偿 <span>ms</span></label><input id="input-latency" type="number" min="0" max="2000" step="10" value="80"><p>仅实时：正值让目标向前回溯，补偿设备输入延迟；80 ms 为起始估计。</p></div><div class="alignment-control"><label for="transpose">目标转调 <span>半音</span></label><input id="transpose" type="number" min="-24" max="24" step="1" value="0"><p>正值升调，负值降调。只平移比较目标，不改变试听伴奏。</p></div></section>
+
+      <details class="guide"><summary>使用方法、评分边界与隐私说明</summary><div class="guide-content"><p><strong>推荐流程：</strong>上传原唱歌曲，选择「歌曲混音」进行真正的人声分离。分析完成后，戴耳机试听参考伴奏并打开麦克风。也可以上传自己的录音，调整时间偏移后做离线比较。</p><p><strong>实时对齐：</strong>参考位置 = 播放器位置 − 分析窗口年龄 − 输入延迟补偿 + 时间偏移。拖动播放位置、换音轨或调整参数后，实时统计会重新开始。暂停时只测当前音高，不计分。</p><p><strong>音准不是演唱总分：</strong>本工具面向单人、单旋律的人声；合唱、和声、气声、滑音、重混响以及分离残留可能造成误检。不会把混音直接作为干声评分，也不会把八度偏差折算为唱准。频率检测范围约 60–1100 Hz，以 A4 = 440 Hz 定音。</p><p><strong>本地隐私：</strong>文件只发送到本机处理服务，麦克风波形只在浏览器内分析。已处理文件会缓存在本机；点击对应文件的「取消 / 移除」可删除该任务数据。请勿将服务开放到公网。</p><p><strong>合成示例：</strong>示例是软件生成的测试旋律，用于验证算法与界面，不是商业歌曲，也不能代表真实演唱的全部难度。</p></div></details>
+      <div class="cache-management"><span id="cache-status" role="status">本机缓存可恢复，也可以随时清理。</span><button id="clear-cache" type="button" class="text-button danger">清理全部本机缓存</button></div>
+    </main>
+    <footer><span>听见 · 本地唱歌音准实验室</span><span>真实检测 · 保留沉默 · 尊重你的声音</span></footer>
+  </div>
+</body>
+</html>

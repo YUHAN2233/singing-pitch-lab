@@ -1,0 +1,1 @@
+"""Local singing analysis service."""
