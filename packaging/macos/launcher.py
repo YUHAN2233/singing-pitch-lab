@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import queue
+import sys
 import socket
 import subprocess
 import threading
@@ -71,6 +72,8 @@ def main() -> int:
         SOCKET_PATH.unlink(missing_ok=True)
         os.environ["SINGING_LAB_DATA"] = str(DATA_ROOT)
         os.environ["SINGING_LAB_MODEL"] = str(MODEL_ROOT / "UVR_MDXNET_Main.onnx")
+        if getattr(sys, 'frozen', False):
+            os.environ['IMAGEIO_FFMPEG_EXE'] = str(Path(sys._MEIPASS) / 'native' / 'ffmpeg')
 
         import uvicorn
         from backend.app import app, JOBS, LOCK, POOL

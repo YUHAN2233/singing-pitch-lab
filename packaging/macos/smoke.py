@@ -60,8 +60,9 @@ def submit(base: str, mode: str, audio: bytes) -> None:
 
 
 def exercise(binary: Path, root: Path, env: dict[str, str]) -> None:
-    process = subprocess.Popen([str(binary)], env=env, stdout=subprocess.DEVNULL,
-                               stderr=subprocess.STDOUT)
+    log_path = root / 'smoke-process.log'
+    log = log_path.open('wb')
+    process = subprocess.Popen([str(binary)], env=env, stdout=log, stderr=subprocess.STDOUT)
     try:
         base = None
         for _ in range(100):
@@ -92,10 +93,17 @@ def exercise(binary: Path, root: Path, env: dict[str, str]) -> None:
         assert quit_result.returncode == 0
         assert process.wait(timeout=25) == 0
         assert not (root / "control.sock").exists()
+    except Exception:
+        print(log_path.read_text(errors='replace'), flush=True)
+        error_log = root / 'launcher-error.log'
+        if error_log.exists():
+            print(error_log.read_text(errors='replace'), flush=True)
+        raise
     finally:
         if process.poll() is None:
             process.terminate()
             process.wait(timeout=15)
+        log.close()
 
 
 def main() -> None:
@@ -108,6 +116,9 @@ def main() -> None:
                    TINGJIAN_NO_BROWSER="1")
         exercise(args.binary.resolve(), root, env)
         exercise(args.binary.resolve(), root, env)
+        env['TINGJIAN_HEADLESS'] = '0'
+        exercise(args.binary.resolve(), root, env)
+        print('macOS Tk window startup and quit passed', flush=True)
     print("macOS frozen launcher smoke passed", flush=True)
 
 

@@ -1,12 +1,11 @@
-FFmpeg executable in this application is obtained from the pinned imageio-ffmpeg
-0.6.0 platform wheel on PyPI. The package project and its wheel-building sources:
-https://github.com/imageio/imageio-ffmpeg/tree/v0.6.0
+The macOS application includes FFmpeg 9.0.2 built from the unmodified source at
+https://github.com/FFmpeg/FFmpeg/commit/946fcce07b6dcd0331c8cc609192aeff5e1924f8
+(signed upstream tag n9.0.2). GPL and nonfree features, network support and external
+library autodetection are disabled. FFmpeg is a separate executable invoked by
+the application, licensed under LGPL 2.1 or later. The application does not link
+FFmpeg libraries into its own executable.
 
-FFmpeg source releases and licensing information:
-https://ffmpeg.org/download.html#get-sources
-https://ffmpeg.org/legal.html
-
-The precise executable version and its configure flags are recorded in
-FFMPEG_BUILD.txt generated during the macOS build. The application also includes
-GPL-3.0.txt. Downstream redistributors should verify the wheel's corresponding
-source and any non-FFmpeg linked libraries before further redistribution.
+The complete source archive, license, build script and configure records are
+provided inside Tingjian.app/Contents/Resources/third_party_sources/. The exact
+binary version, configuration and source archive hash are in FFMPEG_BUILD.txt.
+Dependency licenses are preserved in Contents/Resources/licenses/.
