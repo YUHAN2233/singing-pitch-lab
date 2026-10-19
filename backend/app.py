@@ -24,12 +24,13 @@ from fastapi.staticfiles import StaticFiles
 
 from .audio import decode_audio
 from .pitch import analyze_pitch
+from .duet import analyze_two_voices
 from .separation import model_info, separate
 from .storage import write_flac24
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = Path(os.environ.get("SINGING_LAB_DATA", str(ROOT / ".data"))).resolve()
-MODEL = ROOT / "models" / "UVR_MDXNET_Main.onnx"
+MODEL = Path(os.environ.get("SINGING_LAB_MODEL", str(ROOT / "models" / "UVR_MDXNET_Main.onnx"))).resolve()
 MAX_BYTES = 160 * 1024 * 1024
 LOCK = RLock()
 JOBS: dict[str, "Job"] = {}
@@ -89,6 +90,9 @@ def process_job(job):
         audio, rate = decode_audio(job.folder / "upload.bin", job.folder / "original.wav", job.cancel.is_set, job.name)
         if job.cancel.is_set():
             return
+        if job.mode.startswith("duet_"):
+            process_duet_job(job, audio, rate)
+            return
         warnings = []
         stems = {"original": f"/api/audio/{job.id}/original"}
         storage_gains = {}
@@ -141,6 +145,78 @@ def process_job(job):
                 update(job, "cancelled", message="已取消并清除本机文件")
 
 
+def _track_summary(frames):
+    voiced = [frame for frame in frames if frame.get("frequency") is not None]
+    return {"total_frames": len(frames), "voiced_frames": len(voiced),
+            "voiced_ratio": round(len(voiced) / len(frames), 3) if frames else 0,
+            "median_frequency": round(float(np.median([f["frequency"] for f in voiced])), 2) if voiced else None,
+            "lowest_note": min(voiced, key=lambda f: f["midi"])["note"] if voiced else None,
+            "highest_note": max(voiced, key=lambda f: f["midi"])["note"] if voiced else None}
+
+
+def process_duet_job(job, audio, rate):
+    """Analyze only explicitly selected channels or experimental vocal mixture."""
+    warnings = []
+    stems = {"original": f"/api/audio/{job.id}/original"}
+    storage_gains = {}
+    pairs = None
+    if job.mode == "duet_channels":
+        if audio.ndim != 2 or audio.shape[1] != 2:
+            raise ValueError("左右声道模式要求双声道音频")
+        if np.sqrt(np.mean((audio[:, 0] - audio[:, 1]) ** 2)) < max(.002, np.sqrt(np.mean(audio ** 2)) * .03):
+            raise ValueError("左右声道几乎相同，不能作为两位歌手的独立输入")
+        update(job, progress=.10, message="分别分析左、右声道")
+        left = analyze_pitch(audio[:, 0], rate, cancel=job.cancel.is_set,
+                             progress=lambda p: update(job, progress=.10+.42*p))
+        right = analyze_pitch(audio[:, 1], rate, cancel=job.cancel.is_set,
+                              progress=lambda p: update(job, progress=.52+.42*p))
+        tracks = [{"label": "左声道", "frames": left, "summary": _track_summary(left)},
+                  {"label": "右声道", "frames": right, "summary": _track_summary(right)}]
+        algorithm = "YIN per selected stereo channel"
+        warnings.append("左右声道必须确实分别录下两个人；普通立体声混音不能按声道当作两位歌手。")
+    else:
+        vocals = audio
+        if job.mode == "duet_song":
+            update(job, progress=.08, message="先用 UVR 分离人声与伴奏")
+            vocals, accompaniment, rate = separate(audio, rate, MODEL, cancel=job.cancel.is_set,
+                progress=lambda p: update(job, progress=.08+.68*p))
+            storage_gains["vocals"] = write_flac24(job.folder / "vocals.flac", vocals, rate)
+            storage_gains["accompaniment"] = write_flac24(job.folder / "accompaniment.flac", accompaniment, rate)
+            stems.update(vocals=f"/api/audio/{job.id}/vocals",
+                         accompaniment=f"/api/audio/{job.id}/accompaniment")
+            warnings.append("UVR 只分人声与伴奏，并未分出两个歌手；伴奏残留会造成误检。")
+        update(job, progress=.78 if job.mode == "duet_song" else .1,
+               message="实验性估计同时出现的两个基频")
+        pairs = analyze_two_voices(vocals, rate, cancel=job.cancel.is_set,
+            progress=lambda p: update(job, progress=(.78+.17*p) if job.mode == "duet_song" else (.1+.85*p)))
+        tracks = []
+        for label, key in (("较低音高槽", "lower"), ("较高音高槽", "higher")):
+            frames = [{"time": pair["time"], **pair[key], "rms": pair["rms"]} for pair in pairs]
+            tracks.append({"label": label, "frames": frames, "summary": _track_summary(frames)})
+        algorithm = "experimental harmonic multi-F0, two slots"
+        warnings.append("实验性多音高估计：两个槽位按每帧高低排序，不代表固定歌手身份；同音、交叉、谐波重叠及弱声部可能无法区分。")
+        if job.mode == "duet_mix":
+            warnings.append("此模式要求已无伴奏的双人干声；普通歌曲请先选伴奏分离模式。")
+    if job.cancel.is_set():
+        return
+    storage_gains["original"] = write_flac24(job.folder / "original.flac", audio, rate)
+    result = {"id": job.id, "name": job.name, "kind": job.kind, "mode": job.mode,
+              "duration": len(audio)/rate, "frames": [], "tracks": tracks,
+              "paired_frames": pairs, "audio": stems, "warnings": warnings, "sample_rate": rate,
+              "storage_format": "FLAC PCM_24 with peak gain", "storage_gains": storage_gains,
+              "algorithm": algorithm, "separation": "UVR_MDXNET_Main" if job.mode == "duet_song" else None,
+              "created_at": job.created, "completed_at": time.time(),
+              "source_sha256": job.source_sha256, "source_bytes": job.source_bytes}
+    if job.cancel.is_set():
+        return
+    (job.folder / "analysis.json").write_text(json.dumps(result, ensure_ascii=False, allow_nan=False), encoding="utf-8")
+    (job.folder / "upload.bin").unlink(missing_ok=True)
+    (job.folder / "original.wav").unlink(missing_ok=True)
+    with LOCK:
+        job.result = result
+        update(job, "done", 1., "双声部分析完成")
+
+
 @asynccontextmanager
 async def lifespan(app):
     DATA.mkdir(parents=True, exist_ok=True)
@@ -161,13 +237,13 @@ async def lifespan(app):
                 if (not isinstance(r, dict) or path.parent.name != r.get("id")
                         or not re.fullmatch(r"[0-9a-f]{32}", path.parent.name)
                         or r.get("kind") not in ("reference", "recording")
-                        or r.get("mode") not in ("dry", "mixed")
+                        or r.get("mode") not in ("dry", "mixed", "duet_channels", "duet_mix", "duet_song")
                         or not isinstance(r.get("name"), str)
                         or not isinstance(r.get("frames"), list)
                         or not isinstance(r.get("audio"), dict)
                         or (r.get("storage_format") is not None and
                             (not (path.parent / "original.flac").is_file() or
-                             (r.get("mode") == "mixed" and
+                             (r.get("mode") in ("mixed", "duet_song") and
                               (not (path.parent / "vocals.flac").is_file() or
                                not (path.parent / "accompaniment.flac").is_file()))))
                         or (r.get("storage_format") is None and
@@ -241,9 +317,9 @@ def list_jobs(summary: bool = True):
 
 @app.post("/api/jobs", status_code=202)
 async def create_job(request: Request, kind: Literal["reference", "recording"] = "reference",
-                     mode: Literal["mixed", "dry"] = "mixed"):
-    if mode == "mixed" and not health()["model_ready"]:
-        raise HTTPException(503, "缺少真实人声分离模型，请先运行 setup.ps1；不可把混合音乐当干声评分。")
+                     mode: Literal["mixed", "dry", "duet_channels", "duet_mix", "duet_song"] = "mixed"):
+    if mode in ("mixed", "duet_song") and not health()["model_ready"]:
+        raise HTTPException(503, "缺少人声分离模型。请按安装说明导入匹配的模型；不可把混合音乐当干声评分。")
     length = request.headers.get("content-length")
     if length:
         try:
@@ -328,7 +404,7 @@ def get_audio(identifier: str, stem: Literal["original", "vocals", "accompanimen
         raise HTTPException(409, "音频尚未就绪或已取消")
     compact = bool(job.result and job.result.get("storage_format"))
     if compact:
-        selected = "original" if stem == "vocals" and job.mode == "dry" else stem
+        selected = "original" if stem == "vocals" and job.mode in ("dry", "duet_channels", "duet_mix") else stem
         path = job.folder / f"{selected}.flac"
         media_type, extension = "audio/flac", "flac"
     else:

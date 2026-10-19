@@ -1,0 +1,11 @@
+The macOS application includes FFmpeg 9.0.2 built from the unmodified source at
+https://github.com/FFmpeg/FFmpeg/commit/946fcce07b6dcd0331c8cc609192aeff5e1924f8
+(signed upstream tag n9.0.2). GPL and nonfree features, network support and external
+library autodetection are disabled. FFmpeg is a separate executable invoked by
+the application, licensed under LGPL 2.1 or later. The application does not link
+FFmpeg libraries into its own executable.
+
+The complete source archive, license, build script and configure records are
+provided inside Tingjian.app/Contents/Resources/third_party_sources/. The exact
+binary version, configuration and source archive hash are in FFMPEG_BUILD.txt.
+Dependency licenses are preserved in Contents/Resources/licenses/.

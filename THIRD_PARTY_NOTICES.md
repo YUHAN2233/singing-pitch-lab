@@ -25,3 +25,7 @@
 | [pytest](https://github.com/pytest-dev/pytest)、[httpx](https://github.com/encode/httpx)、[Playwright Python](https://github.com/microsoft/playwright-python) | 仅测试依赖，分别按上游 MIT、BSD-3-Clause、Apache-2.0 许可安装。 |
 
 以上为来源和分发边界说明，不代替各上游项目的完整许可文件；安装的 wheel 应保留它们各自附带的许可证。
+
+## macOS Actions 应用包
+
+公开的 macOS `.app` 使用固定版本的 PyPI wheel 打包 Python 运行依赖，不包含模型权重或用户音频。FFmpeg 9.0.2 从上游固定提交编译，禁用 GPL、nonfree、网络协议与外部库自动探测，作为独立 LGPL 2.1 或更新版本的可执行程序调用。`FFMPEG_BUILD.txt` 记录实际版本和配置，`third_party_sources/` 提供未修改的 FFmpeg 源码、配置记录与构建脚本。SoundFile 0.13.1 所带 libsndfile 1.2.2 的对应源码及其静态依赖源码、上游构建脚本也放在此目录。`licenses/` 保留安装的 wheel、Python 与 Tcl/Tk 许可文件；`distributions.json` 记录具体版本。允许为调试对 LGPL 组件的修改而逆向工程，替换方法见源码目录中的 README。

@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>双人音高分析 · 音准实验室</title><link rel="stylesheet" href="/duet.css"><script type="module" src="/duet.js"></script></head>
+<body><main class="shell"><nav><a href="/">← 返回单人分析</a><span>本机处理 · 录音不上传云端</span></nav>
+<header><p class="eyebrow">TWO VOICE PITCH LAB</p><h1>听见两条声线</h1><p>上传双人演唱，查看各自的音高轨迹。混合录音使用实验性多基频估计；同音与音高交叉时无法稳定认出歌手。</p></header>
+<section class="card" aria-labelledby="input-title"><h2 id="input-title">选择输入方式</h2>
+<label>分析方式 <select id="mode"><option value="independent">两份独立干声录音（推荐）</option><option value="duet_channels">已明确分开的左／右声道</option><option value="duet_mix">一份双人混合干声 · 实验性</option><option value="duet_song">带伴奏的双人录音 · 先分人声 · 实验性</option></select></label>
+<p id="mode-help" class="help"></p><div class="inputs"><label>录音 A <input type="file" id="file-a" accept="audio/*,.wav,.mp3,.flac,.m4a,.ogg,.ncm"></label><label id="file-b-wrap">录音 B <input type="file" id="file-b" accept="audio/*,.wav,.mp3,.flac,.m4a,.ogg,.ncm"></label></div>
+<div class="actions"><button id="analyze">开始分析</button><button id="cancel" type="button" disabled>取消任务</button><label id="offset-wrap">B 相对 A 延迟（秒） <input id="offset" type="number" step="0.1" value="0" min="-600" max="600"></label></div>
+<progress id="progress" max="1" value="0" hidden></progress><p id="status" role="status" aria-live="polite">请选择音频文件。</p>
+</section>
+<section class="card" id="result" hidden><div class="heading"><div><p class="eyebrow">PITCH TIMELINE</p><h2>双轨音高历史</h2></div><button id="download" type="button">下载分析 JSON</button><button id="delete-result" type="button">删除本机结果</button></div>
+<p class="legend"><span class="dot a"></span><span id="label-a">声部 A</span> <span class="dot b"></span><span id="label-b">声部 B</span></p>
+<div class="chart-wrap"><canvas id="chart" role="img" aria-label="双人音高曲线"></canvas></div><p id="hover" class="readout">将鼠标移到曲线上，查看两条轨迹同一时刻的音名、音分和证据强度。</p>
+<label>查看时间 <input type="range" id="seek" min="0" max="0" step="0.1" value="0"></label><div class="stats"><article><h3 id="stats-a-label">声部 A</h3><p id="stats-a"></p></article><article><h3 id="stats-b-label">声部 B</h3><p id="stats-b"></p></article></div>
+<p id="coverage"></p><div class="players"><audio id="audio-a" controls></audio><audio id="audio-b" controls hidden></audio></div><ul id="warnings"></ul>
+</section><section class="card"><h2>已有双人结果</h2><select id="recent"><option value="">选择本机保存的分析</option></select><button id="restore">打开</button><p class="help">独立双文件结果在本次页面中显示；每个文件也会各自保存在本机任务中。</p></section>
+<footer>普通立体声混音不能假定左右声道是两个人。高低槽位并非歌手身份；此工具不生成两人分离音频，也不对不确定帧评分。</footer></main></body></html>
