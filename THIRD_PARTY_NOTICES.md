@@ -25,3 +25,7 @@
 | [pytest](https://github.com/pytest-dev/pytest)、[httpx](https://github.com/encode/httpx)、[Playwright Python](https://github.com/microsoft/playwright-python) | 仅测试依赖，分别按上游 MIT、BSD-3-Clause、Apache-2.0 许可安装。 |
 
 以上为来源和分发边界说明，不代替各上游项目的完整许可文件；安装的 wheel 应保留它们各自附带的许可证。
+
+## macOS Actions 应用包
+
+公开的 macOS `.app` 使用固定版本的 PyPI wheel 打包运行依赖，但不包含任何模型权重或用户音频。应用内提供此说明、项目许可证、`GPL-3.0.txt`、`FFMPEG_BUILD.txt`（实际 FFmpeg 版本与编译配置）及 `FFMPEG_SOURCE.txt`（上游源码位置）。如需再次分发，请按实际 wheel 的许可及源码要求重新核对，不应只凭本表判断。

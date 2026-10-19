@@ -1,0 +1,12 @@
+FFmpeg executable in this application is obtained from the pinned imageio-ffmpeg
+0.6.0 platform wheel on PyPI. The package project and its wheel-building sources:
+https://github.com/imageio/imageio-ffmpeg/tree/v0.6.0
+
+FFmpeg source releases and licensing information:
+https://ffmpeg.org/download.html#get-sources
+https://ffmpeg.org/legal.html
+
+The precise executable version and its configure flags are recorded in
+FFMPEG_BUILD.txt generated during the macOS build. The application also includes
+GPL-3.0.txt. Downstream redistributors should verify the wheel's corresponding
+source and any non-FFmpeg linked libraries before further redistribution.

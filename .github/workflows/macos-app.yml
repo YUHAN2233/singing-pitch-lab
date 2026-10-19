@@ -1,0 +1,85 @@
+name: macOS app
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x86_64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Ensure no private assets enter the build
+        shell: bash
+        run: |
+          if find . -type f \( -name '*.onnx' -o -name '*.wav' -o -name '*.mp3' -o -name '*.flac' -o -name '*.ncm' \) -print | grep -q .; then
+            echo 'Unexpected model or audio file in repository' >&2
+            exit 1
+          fi
+      - name: Install pinned runtime and packager
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt 'pyinstaller==6.22.3'
+      - name: Record bundled FFmpeg build
+        shell: bash
+        run: |
+          python - <<'PY'
+          import imageio_ffmpeg
+          import subprocess
+          from pathlib import Path
+          exe = imageio_ffmpeg.get_ffmpeg_exe()
+          info = subprocess.run([exe, '-version'], text=True, capture_output=True, check=True)
+          Path('FFMPEG_BUILD.txt').write_text('imageio-ffmpeg 0.6.0\n' + info.stdout, encoding='utf-8')
+          PY
+      - name: Build Tingjian.app
+        shell: bash
+        run: |
+          python -m PyInstaller --noconfirm --clean --windowed --onedir \
+            --name Tingjian --osx-bundle-identifier com.yuhan2233.tingjian \
+            --paths . --add-data web:web \
+            --add-data README_MAC.md:. --add-data LICENSE:. \
+            --add-data THIRD_PARTY_NOTICES.md:. --add-data GPL-3.0.txt:. \
+            --add-data FFMPEG_SOURCE.txt:. --add-data FFMPEG_BUILD.txt:. \
+            --collect-all imageio_ffmpeg --collect-all soundfile \
+            --collect-all onnxruntime packaging/macos/launcher.py
+          test -d dist/Tingjian.app
+          test -x dist/Tingjian.app/Contents/MacOS/Tingjian
+          if find dist/Tingjian.app -type f \( -name '*.onnx' -o -name '*.wav' -o -name '*.mp3' -o -name '*.flac' -o -name '*.ncm' \) -print | grep -q .; then
+            echo 'Private asset unexpectedly bundled' >&2
+            exit 1
+          fi
+          file dist/Tingjian.app/Contents/MacOS/Tingjian
+          lipo -archs dist/Tingjian.app/Contents/MacOS/Tingjian | grep -qw '${{ matrix.arch }}'
+      - name: Test frozen app without model
+        run: python packaging/macos/smoke.py dist/Tingjian.app/Contents/MacOS/Tingjian
+      - name: Package and hash app
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          zip_path="artifacts/Tingjian-macos-${{ matrix.arch }}.zip"
+          ditto -c -k --keepParent dist/Tingjian.app "$zip_path"
+          shasum -a 256 "$zip_path" > "$zip_path.sha256"
+          cat "$zip_path.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Tingjian-macos-${{ matrix.arch }}
+          path: artifacts/*
+          if-no-files-found: error
+          retention-days: 30
